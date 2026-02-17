@@ -1,9 +1,10 @@
 // src/app/components/Screen3.tsx
 
-import { Loader2, Sparkles, Film } from "lucide-react";
+import { Loader2, Sparkles, Film, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { AIService } from "@/services/ai.service";
+import { Button } from "@/app/components/ui/button";
 
 interface Screen3Props {
   onComplete: () => void;
@@ -11,241 +12,212 @@ interface Screen3Props {
 
 export function Screen3({ onComplete }: Screen3Props) {
   const { scenes, characterData, setScenes, setFinalVideoUrl } = useAppContext();
-  const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
-
-  const steps = [
-    { icon: Sparkles, text: "AI 시나리오 분석 중...", duration: 60 },
-    { icon: Film, text: "장면별 이미지 생성 중...", duration: 60 },
-    { icon: Film, text: "영상 합성 중...", duration: 60 }
-  ];
+  const [sceneStatuses, setSceneStatuses] = useState<{
+    [key: number]: 'pending' | 'generating' | 'completed' | 'error'
+  }>({});
+  const [regeneratingScene, setRegeneratingScene] = useState<number | null>(null);
+  const [allCompleted, setAllCompleted] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-    let hasStarted = false;
-    
-    const generateVideos = async () => {
-      if (hasStarted) return;
-      hasStarted = true;
-      
+    const initialStatuses: { [key: number]: 'pending' | 'generating' | 'completed' | 'error' } = {};
+    scenes.forEach(scene => {
+      initialStatuses[scene.id] = 'pending';
+    });
+    setSceneStatuses(initialStatuses);
+
+    generateAllScenes();
+  }, []);
+
+  const generateAllScenes = async () => {
+    const updatedScenes = [...scenes];
+
+    for (let i = 0; i < scenes.length; i++) {
+      const scene = scenes[i];
+      setSceneStatuses(prev => ({ ...prev, [scene.id]: 'generating' }));
+
       try {
-        // Step 1: 시나리오 분석 (0-20%)
-        setCurrentStep(0);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        if (!mounted) return;
-        setProgress(20);
-
-        // Step 2: 각 씬 비디오 생성 (20-80%)
-        setCurrentStep(1);
-        const updatedScenes = [...scenes];
-        const progressPerScene = 60 / scenes.length;
-
-        for (let i = 0; i < scenes.length; i++) {
-          if (!mounted) return;
-          setCurrentSceneIndex(i);
-          
-          try {
-            const videoUrl = await AIService.generateSceneVideo(
-              scenes[i].description,
-              characterData.imageUrl,
-              scenes[i].id
-            );
-            updatedScenes[i] = { ...updatedScenes[i], videoUrl };
-            setScenes(updatedScenes);
-            
-            setProgress(20 + (i + 1) * progressPerScene);
-          } catch (error) {
-            console.error(`Scene ${i + 1} video generation failed:`, error);
-            // Use fallback video URL
-            updatedScenes[i] = { ...updatedScenes[i], videoUrl: `/demo/videos/scene-${i + 1}.mp4` };
-            setScenes(updatedScenes);
-            setProgress(20 + (i + 1) * progressPerScene);
-          }
-        }
-
-        // Step 3: 비디오 병합 (80-100%)
-        if (!mounted) return;
-        setCurrentStep(2);
-        
-        try {
-          const videoUrls = updatedScenes
-            .map(scene => scene.videoUrl)
-            .filter((url): url is string => !!url);
-          
-          if (videoUrls.length === 0) {
-            // Fallback if no videos generated
-            const fallbackUrl = '/demo/videos/scene-1.mp4';
-            setFinalVideoUrl(fallbackUrl);
-          } else {
-            const finalUrl = await AIService.mergeVideos(videoUrls);
-            setFinalVideoUrl(finalUrl);
-          }
-          
-          setProgress(100);
-          
-          setTimeout(() => {
-            if (mounted) {
-              onComplete();
-            }
-          }, 500);
-        } catch (error) {
-          console.error('Video merging failed:', error);
-          // Fallback: use first available video
-          const fallbackUrl = updatedScenes[0]?.videoUrl || '/demo/videos/scene-1.mp4';
-          setFinalVideoUrl(fallbackUrl);
-          setProgress(100);
-          
-          setTimeout(() => {
-            if (mounted) {
-              onComplete();
-            }
-          }, 500);
-        }
+        const videoUrl = await AIService.generateSceneVideo(
+          scene.id,
+          scene.description,
+          characterData.imageUrl
+        );
+        updatedScenes[i] = { ...updatedScenes[i], videoUrl };
+        setScenes(updatedScenes);
+        setSceneStatuses(prev => ({ ...prev, [scene.id]: 'completed' }));
       } catch (error) {
-        console.error('Video generation process failed:', error);
-        // Complete fallback
-        setFinalVideoUrl('/demo/videos/scene-1.mp4');
-        setProgress(100);
-        
-        setTimeout(() => {
-          if (mounted) {
-            onComplete();
-          }
-        }, 500);
+        console.error(`Scene ${scene.id} video generation failed:`, error);
+        setSceneStatuses(prev => ({ ...prev, [scene.id]: 'error' }));
       }
-    };
+    }
 
-    generateVideos();
+    setAllCompleted(true);
+  };
 
-    return () => {
-      mounted = false;
-    };
-  }, []); // Empty dependency array to run only once
+  const regenerateScene = async (sceneId: number) => {
+    setRegeneratingScene(sceneId);
+    setSceneStatuses(prev => ({ ...prev, [sceneId]: 'generating' }));
 
-  const CurrentIcon = steps[currentStep].icon;
+    const sceneIndex = scenes.findIndex(s => s.id === sceneId);
+    if (sceneIndex === -1) return;
+
+    try {
+      const videoUrl = await AIService.generateSceneVideo(
+        sceneId,
+        scenes[sceneIndex].description,
+        characterData.imageUrl
+      );
+      const updatedScenes = [...scenes];
+      updatedScenes[sceneIndex] = { ...updatedScenes[sceneIndex], videoUrl };
+      setScenes(updatedScenes);
+      setSceneStatuses(prev => ({ ...prev, [sceneId]: 'completed' }));
+    } catch (error) {
+      console.error(`Scene ${sceneId} regeneration failed:`, error);
+      setSceneStatuses(prev => ({ ...prev, [sceneId]: 'error' }));
+    } finally {
+      setRegeneratingScene(null);
+    }
+  };
+
+  const handleMergeAndComplete = async () => {
+    try {
+      const videoUrls = scenes
+        .map(scene => scene.videoUrl)
+        .filter((url): url is string => !!url);
+
+      if (videoUrls.length === 0) {
+        alert('생성된 영상이 없습니다.');
+        return;
+      }
+
+      const finalUrl = await AIService.mergeVideos(videoUrls);
+      setFinalVideoUrl(finalUrl);
+      onComplete();
+    } catch (error) {
+      console.error('Video merging failed:', error);
+      alert('영상 병합에 실패했습니다.');
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-500';
+      case 'generating': return 'bg-blue-500 animate-pulse';
+      case 'error': return 'bg-red-500';
+      default: return 'bg-gray-300';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed': return '완료';
+      case 'generating': return '생성 중...';
+      case 'error': return '실패';
+      default: return '대기 중';
+    }
+  };
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4 md:p-6 min-h-screen flex items-center justify-center">
-      {/* Hidden video element to prevent external script errors */}
-      <video 
-        id="twoXSpeed" 
-        style={{ display: 'none' }}
-        muted
-        playsInline
-      />
-      
-      <div className="w-full">
-        {/* Main Loading Card */}
-        <div className="relative bg-white rounded-3xl shadow-2xl border border-gray-100 
-                      overflow-hidden p-8 md:p-12">
-          {/* Animated gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-blue-500/5 to-purple-500/5 
-                        animate-pulse"></div>
-          
-          <div className="relative z-10 text-center space-y-8">
-            {/* Animated Icon */}
-            <div className="relative inline-flex">
-              {/* Outer rotating ring */}
-              <div className="absolute inset-0 rounded-full border-4 border-transparent 
-                            border-t-purple-500 border-r-blue-500 animate-spin"></div>
-              
-              {/* Inner icon container */}
-              <div className="relative p-8 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full">
-                <div className="p-6 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full
-                              shadow-2xl animate-pulse">
-                  <CurrentIcon className="w-12 h-12 md:w-16 md:h-16 text-white" />
-                </div>
-              </div>
-
-              {/* Orbiting dots */}
-              <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
-                <div className="absolute top-0 left-1/2 w-3 h-3 bg-purple-500 rounded-full 
-                              transform -translate-x-1/2 shadow-lg"></div>
-              </div>
-              <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '1s' }}>
-                <div className="absolute bottom-0 left-1/2 w-3 h-3 bg-blue-500 rounded-full 
-                              transform -translate-x-1/2 shadow-lg"></div>
-              </div>
-            </div>
-
-            {/* Status Text */}
-            <div className="space-y-3">
-              <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 
-                           bg-clip-text text-transparent">
-                영상 생성 중입니다
-              </h2>
-              <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-md mx-auto">
-                {steps[currentStep].text}
-                {currentStep === 1 && scenes[currentSceneIndex] && (
-                  <span className="block text-sm mt-1">
-                    ({currentSceneIndex + 1}/{scenes.length} 장면)
-                  </span>
-                )}
-              </p>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="space-y-3">
-              <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                {/* Background shimmer */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent
-                              animate-shimmer"></div>
-                
-                {/* Progress fill */}
-                <div 
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 to-blue-500 
-                           rounded-full transition-all duration-300 ease-out
-                           shadow-lg shadow-purple-500/50"
-                  style={{ width: `${progress}%` }}
-                >
-                  {/* Inner glow */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/30 to-transparent 
-                                rounded-full"></div>
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500 font-medium">{Math.round(progress)}% 완료</span>
-                <span className="text-gray-400">
-                  약 {Math.max(1, Math.ceil((100 - progress) / 10))}초 남음
-                </span>
-              </div>
-            </div>
-
-            {/* Step Indicators */}
-            <div className="flex justify-center gap-2">
-              {steps.map((_, index) => (
-                <div
-                  key={index}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    index === currentStep 
-                      ? 'w-8 bg-gradient-to-r from-purple-500 to-blue-500' 
-                      : index < currentStep
-                      ? 'w-2 bg-gray-400'
-                      : 'w-2 bg-gray-300'
-                  }`}
-                ></div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-6 p-4 bg-purple-50 rounded-xl border border-purple-100">
-          <div className="flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm text-purple-900 font-medium">
-                AI가 고품질 영상을 생성하고 있습니다
-              </p>
-              <p className="text-xs text-purple-700 mt-1">
-                최상의 결과를 위해 몇 초가 소요될 수 있습니다
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-6">
+      <div className="text-center mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          장면별 영상 생성
+        </h1>
+        <p className="text-sm md:text-base text-gray-600">
+          각 장면의 영상을 확인하고 마음에 들지 않으면 재생성할 수 있습니다
+        </p>
       </div>
+
+      <div className="space-y-4 mb-6">
+        {scenes.map((scene) => (
+          <div
+            key={scene.id}
+            className="bg-white rounded-2xl border border-gray-200 shadow-md overflow-hidden"
+          >
+            <div className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 
+                              text-white rounded-full text-sm font-semibold">
+                    {scene.title}
+                  </div>
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium text-white ${
+                    getStatusColor(sceneStatuses[scene.id] || 'pending')
+                  }`}>
+                    {getStatusText(sceneStatuses[scene.id] || 'pending')}
+                  </div>
+                </div>
+                {sceneStatuses[scene.id] === 'completed' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => regenerateScene(scene.id)}
+                    disabled={regeneratingScene === scene.id}
+                    className="border-purple-300 hover:bg-purple-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-1 ${
+                      regeneratingScene === scene.id ? 'animate-spin' : ''
+                    }`} />
+                    재생성
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="aspect-video rounded-xl overflow-hidden bg-gray-100">
+                  {scene.videoUrl ? (
+                    <video
+                      src={scene.videoUrl}
+                      className="w-full h-full object-cover"
+                      controls
+                      muted
+                      loop
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      {sceneStatuses[scene.id] === 'generating' ? (
+                        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+                      ) : (
+                        <Film className="w-8 h-8 text-gray-400" />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center">
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {scene.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {allCompleted && (
+        <div className="flex justify-center">
+          <Button
+            onClick={handleMergeAndComplete}
+            className="h-14 px-8 text-base font-semibold
+                     bg-gradient-to-r from-purple-600 to-blue-600 
+                     hover:from-purple-700 hover:to-blue-700
+                     shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            영상 병합 및 완료
+          </Button>
+        </div>
+      )}
+
+      {!allCompleted && (
+        <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+            <p className="text-sm text-blue-900">
+              영상을 생성하고 있습니다. 잠시만 기다려주세요...
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

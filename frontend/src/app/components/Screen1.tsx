@@ -59,7 +59,10 @@ export function Screen1({ onNext }: Screen1Props) {
     const newErrors: { [key: string]: string } = {};
     if (!characterData.imageUrl) newErrors.image = '캐릭터 이미지를 업로드해주세요.';
     if (!characterData.name.trim()) newErrors.name = '캐릭터 이름을 입력해주세요.';
-    if (!characterData.description.trim()) newErrors.description = '영상 설명을 입력해주세요.';
+    if (!characterData.who.trim()) newErrors.who = '누가를 입력해주세요.';
+    if (!characterData.where.trim()) newErrors.where = '어디서를 입력해주세요.';
+    if (!characterData.what.trim()) newErrors.what = '무엇을을 입력해주세요.';
+    if (!characterData.how.trim()) newErrors.how = '어떻게를 입력해주세요.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -70,7 +73,11 @@ export function Screen1({ onNext }: Screen1Props) {
     try {
       const generatedScenes = await AIService.generateScenario(
         characterData.name,
-        characterData.description
+        characterData.who,
+        characterData.where,
+        characterData.what,
+        characterData.how,
+        characterData.imageUrl
       );
       setScenes(generatedScenes);
       onNext();
@@ -175,24 +182,59 @@ export function Screen1({ onNext }: Screen1Props) {
 
           {/* 영상 설명 */}
           <div className="space-y-3">
-            <Label htmlFor="video-description" className="text-base font-semibold text-gray-800">
+            <Label className="text-base font-semibold text-gray-800">
               영상 설명
             </Label>
-            <Textarea 
-              id="video-description"
-              placeholder="눈송이가 카페에서 커피를 마시며 노트북을 한다"
-              rows={6}
-              value={characterData.description}
-              onChange={(e) => setCharacterData({ ...characterData, description: e.target.value })}
-              className="text-base border-gray-200 focus:border-purple-400 
-                       focus:ring-purple-400/20 transition-all resize-none"
-            />
-            <p className="text-xs text-gray-500">
-              원하는 장면과 행동을 자세히 설명해주세요
-            </p>
-            {errors.description && (
-              <p className="text-sm text-red-500">{errors.description}</p>
-            )}
+            
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="who" className="text-sm text-gray-600">누가</Label>
+                <Input 
+                  id="who"
+                  placeholder="예: 눈송이가"
+                  value={characterData.who}
+                  onChange={(e) => setCharacterData({ ...characterData, who: e.target.value })}
+                  className="mt-1 border-gray-200 focus:border-purple-400"
+                />
+                {errors.who && <p className="text-sm text-red-500 mt-1">{errors.who}</p>}
+              </div>
+              
+              <div>
+                <Label htmlFor="where" className="text-sm text-gray-600">어디서</Label>
+                <Input 
+                  id="where"
+                  placeholder="예: 카페에서"
+                  value={characterData.where}
+                  onChange={(e) => setCharacterData({ ...characterData, where: e.target.value })}
+                  className="mt-1 border-gray-200 focus:border-purple-400"
+                />
+                {errors.where && <p className="text-sm text-red-500 mt-1">{errors.where}</p>}
+              </div>
+              
+              <div>
+                <Label htmlFor="what" className="text-sm text-gray-600">무엇을</Label>
+                <Input 
+                  id="what"
+                  placeholder="예: 커피를 마시며"
+                  value={characterData.what}
+                  onChange={(e) => setCharacterData({ ...characterData, what: e.target.value })}
+                  className="mt-1 border-gray-200 focus:border-purple-400"
+                />
+                {errors.what && <p className="text-sm text-red-500 mt-1">{errors.what}</p>}
+              </div>
+              
+              <div>
+                <Label htmlFor="how" className="text-sm text-gray-600">어떻게</Label>
+                <Input 
+                  id="how"
+                  placeholder="예: 노트북을 한다"
+                  value={characterData.how}
+                  onChange={(e) => setCharacterData({ ...characterData, how: e.target.value })}
+                  className="mt-1 border-gray-200 focus:border-purple-400"
+                />
+                {errors.how && <p className="text-sm text-red-500 mt-1">{errors.how}</p>}
+              </div>
+            </div>
           </div>
 
           {errors.general && (

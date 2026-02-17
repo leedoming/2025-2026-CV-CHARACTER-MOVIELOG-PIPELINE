@@ -4,7 +4,10 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface CharacterData {
   name: string;
-  description: string;
+  who: string;
+  where: string;
+  what: string;
+  how: string;
   image: File | null;
   imageUrl: string;
 }
@@ -33,7 +36,10 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [characterData, setCharacterData] = useState<CharacterData>({
     name: '',
-    description: '',
+    who: '',
+    where: '',
+    what: '',
+    how: '',
     image: null,
     imageUrl: '',
   });
@@ -44,7 +50,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const resetAll = () => {
     setCharacterData({
       name: '',
-      description: '',
+      who: '',
+      where: '',
+      what: '',
+      how: '',
       image: null,
       imageUrl: '',
     });
