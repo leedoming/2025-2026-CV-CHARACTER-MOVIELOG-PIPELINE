@@ -2,7 +2,7 @@
 
 import { Button } from "@/app/components/ui/button";
 import { Textarea } from "@/app/components/ui/textarea";
-import { Edit3, Play, RefreshCw, Check, X } from "lucide-react";
+import { Edit3, Play, RefreshCw, Check, X, Clock } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import { AIService } from "@/services/ai.service";
 import { useState } from "react";
@@ -25,10 +25,8 @@ export function Screen2({ onEdit, onNext }: Screen2Props) {
 
   const handleSaveEdit = () => {
     if (editingSceneId) {
-      setScenes(scenes.map(scene => 
-        scene.id === editingSceneId 
-          ? { ...scene, description: editedDescription }
-          : scene
+      setScenes(scenes.map(scene =>
+        scene.id === editingSceneId ? { ...scene, description: editedDescription } : scene
       ));
       setEditingSceneId(null);
     }
@@ -55,196 +53,237 @@ export function Screen2({ onEdit, onNext }: Screen2Props) {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto p-4 md:p-6">
+    <div className="w-full max-w-3xl mx-auto px-4 py-6 relative z-10">
+
       {/* Header */}
-      <div className="text-center mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-          시나리오 미리보기
-        </h1>
-        <p className="text-sm md:text-base text-gray-600">
-          각 장면을 확인하고 수정할 수 있습니다
-        </p>
+      <div className="fade-up fade-up-1" style={{ marginBottom: '1.75rem' }}>
+        <div className="eyebrow" style={{ marginBottom: '0.75rem' }}>Scenario Preview</div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.025em', margin: 0 }}>
+              시나리오 <span className="gradient-brand-text">미리보기</span>
+            </h1>
+            <p style={{ marginTop: '6px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>각 장면을 확인하고 수정할 수 있습니다</p>
+          </div>
+
+          {/* Regenerate button */}
+          <button
+            onClick={handleRegenerateAll}
+            disabled={isRegenerating}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '7px',
+              padding: '8px 16px', borderRadius: 'var(--radius)',
+              background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)',
+              color: 'var(--text-secondary)', fontSize: '0.8rem',
+              fontFamily: 'var(--font-mono)', cursor: isRegenerating ? 'wait' : 'pointer',
+              letterSpacing: '0.05em', textTransform: 'uppercase',
+              transition: 'border-color 0.2s, color 0.2s',
+            }}
+          >
+            <RefreshCw size={13} style={{ animation: isRegenerating ? 'spin 0.8s linear infinite' : 'none' }} />
+            {isRegenerating ? 'REGENERATING' : 'REGENERATE ALL'}
+          </button>
+        </div>
       </div>
 
-      {/* Scene 카드 리스트 */}
-      <div className="space-y-4 md:space-y-5 mb-6">
+      {/* Scene Cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
         {scenes.map((scene, index) => (
-          <div 
+          <div
             key={scene.id}
-            className="group relative bg-white rounded-2xl border border-gray-200 
-                     shadow-md hover:shadow-xl transition-all duration-300
-                     overflow-hidden"
+            className={`cinema-card hover-lift fade-up`}
+            style={{ animationDelay: `${0.1 + index * 0.1}s`, opacity: 0 }}
           >
-            {/* Scene Number Badge */}
-            <div className="absolute top-4 left-4 z-10">
-              <div className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 
-                            text-white px-3 py-1.5 rounded-full shadow-lg text-sm font-semibold">
-                <span>{scene.title}</span>
-                <span className="text-xs opacity-80">• {scene.duration}</span>
+            {/* Card Header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 18px', borderBottom: '1px solid var(--glass-border)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="scene-badge">{scene.title || `SCENE ${scene.id}`}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  <Clock size={11} />
+                  {scene.duration || '4초'}
+                </span>
               </div>
+              {editingSceneId !== scene.id && (
+                <button
+                  onClick={() => handleEditScene(scene.id, scene.description)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    padding: '5px 10px', borderRadius: 'calc(var(--radius) - 4px)',
+                    background: 'transparent', border: '1px solid var(--glass-border)',
+                    color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer',
+                    fontFamily: 'var(--font-mono)', letterSpacing: '0.05em', textTransform: 'uppercase',
+                    transition: 'border-color 0.2s, color 0.2s',
+                  }}
+                >
+                  <Edit3 size={11} />
+                  EDIT
+                </button>
+              )}
             </div>
 
-            {/* Edit Button */}
-            {editingSceneId !== scene.id && (
-              <button 
-                onClick={() => handleEditScene(scene.id, scene.description)}
-                className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full 
-                         shadow-md hover:shadow-lg transition-all duration-300
-                         opacity-0 group-hover:opacity-100"
-              >
-                <Edit3 className="w-4 h-4 text-gray-600" />
-              </button>
-            )}
+            {/* Card Body */}
+            <div style={{ padding: '18px', display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '16px', alignItems: 'center' }}>
 
-            <div className="p-5 md:p-6 space-y-4">
-              {/* 이미지 영역 */}
-              <div className="relative aspect-video border-2 border-dashed border-gray-200 
-                            rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100
-                            group-hover:border-purple-300 transition-all duration-300">
+              {/* Scene Image */}
+              <div style={{
+                aspectRatio: '16/9',
+                borderRadius: 'calc(var(--radius) - 2px)',
+                overflow: 'hidden',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--glass-border)',
+                position: 'relative',
+              }}>
                 {scene.imageUrl ? (
                   <>
-                    <img 
-                      src={scene.imageUrl} 
-                      alt={`Scene ${scene.id}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                    <div className="absolute inset-0 flex items-center justify-center
-                                  opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full shadow-lg 
-                                    flex items-center justify-center
-                                    group-hover:scale-110 transition-transform duration-300">
-                        <Play className="w-8 h-8 text-purple-500 ml-1" />
-                      </div>
+                    <img src={scene.imageUrl} alt={`Scene ${scene.id}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 50%)' }} />
+                    <div style={{ position: 'absolute', bottom: '8px', right: '8px' }}>
+                      <span className="status-badge status-badge-complete">READY</span>
                     </div>
-                    <div className="absolute bottom-3 right-3 px-3 py-1 bg-green-500 
-                                  rounded-full shadow-sm text-xs font-medium text-white">
-                      생성 완료
+                    <div style={{
+                      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: 0, transition: 'opacity 0.25s ease',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = '0')}
+                    >
+                      <div style={{
+                        width: '44px', height: '44px', borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Play size={18} style={{ color: 'white', marginLeft: '2px' }} />
+                      </div>
                     </div>
                   </>
                 ) : (
-                  <>
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5"></div>
-                    <div className="relative h-full flex items-center justify-center">
-                      <div className="text-center space-y-3">
-                        <div className="w-16 h-16 mx-auto bg-white rounded-full shadow-lg 
-                                      flex items-center justify-center
-                                      group-hover:scale-110 transition-transform duration-300">
-                          <Play className="w-8 h-8 text-purple-500" />
-                        </div>
-                        <p className="text-sm text-gray-500 font-medium">
-                          Scene {scene.id} 이미지
-                        </p>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-sm 
-                                  rounded-full shadow-sm text-xs font-medium text-gray-600">
-                      생성 대기중
-                    </div>
-                  </>
+                  <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <Play size={20} style={{ color: 'var(--text-muted)' }} />
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Pending</span>
+                  </div>
                 )}
               </div>
 
-              {/* Scene 설명 */}
-              <div className="space-y-2">
+              {/* Scene Description */}
+              <div>
                 {editingSceneId === scene.id ? (
-                  <div className="space-y-2">
-                    <Textarea
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <textarea
                       value={editedDescription}
                       onChange={(e) => setEditedDescription(e.target.value)}
-                      className="min-h-[80px] border-purple-300 focus:border-purple-400"
+                      rows={3}
+                      style={{
+                        width: '100%', resize: 'none',
+                        background: 'var(--bg-surface)', border: '1px solid rgba(124,58,237,0.4)',
+                        borderRadius: 'calc(var(--radius) - 2px)', color: 'var(--text-primary)',
+                        padding: '10px 12px', fontSize: '0.85rem', fontFamily: 'var(--font-body)',
+                        outline: 'none',
+                      }}
                     />
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
                         onClick={handleSaveEdit}
-                        className="bg-green-500 hover:bg-green-600"
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        저장
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '5px',
+                          padding: '5px 12px', borderRadius: 'calc(var(--radius) - 4px)',
+                          background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)',
+                          color: '#6ee7b7', fontSize: '0.75rem', cursor: 'pointer',
+                          fontFamily: 'var(--font-mono)', letterSpacing: '0.05em',
+                        }}
+                      ><Check size={12} /> SAVE</button>
+                      <button
                         onClick={handleCancelEdit}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        취소
-                      </Button>
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '5px',
+                          padding: '5px 12px', borderRadius: 'calc(var(--radius) - 4px)',
+                          background: 'transparent', border: '1px solid var(--glass-border)',
+                          color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer',
+                          fontFamily: 'var(--font-mono)', letterSpacing: '0.05em',
+                        }}
+                      ><X size={12} /> CANCEL</button>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-1 h-12 bg-gradient-to-b from-purple-500 to-blue-500 
-                                  rounded-full mt-1"></div>
-                    <p className="text-sm md:text-base text-gray-700 leading-relaxed flex-1">
-                      {scene.description}
-                    </p>
+                  <div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                      <div style={{ width: '2px', height: '40px', borderRadius: '2px', background: 'linear-gradient(to bottom, var(--accent-violet), var(--accent-blue))', flexShrink: 0, marginTop: '3px' }} />
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>
+                        {scene.description}
+                      </p>
+                    </div>
+                    <div style={{ marginTop: '12px', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                      SCENE {scene.id} · {scene.duration || '4초'}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Connecting line to next scene */}
-            {index < scenes.length - 1 && (
-              <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 z-0">
-                <div className="w-0.5 h-8 bg-gradient-to-b from-gray-300 to-transparent"></div>
-              </div>
-            )}
           </div>
         ))}
       </div>
 
-      {/* Summary Card */}
-      <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-4 mb-6 border border-purple-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 
-                          rounded-full flex items-center justify-center">
-              <Play className="w-5 h-5 text-white" />
+      {/* Summary Strip */}
+      <div className="fade-up fade-up-3" style={{
+        padding: '14px 18px', marginBottom: '1.25rem',
+        borderRadius: 'var(--radius)',
+        background: 'rgba(124, 58, 237, 0.06)',
+        border: '1px solid rgba(124, 58, 237, 0.15)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: '10px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          {[
+            { label: 'SCENES', value: `${scenes.length}` },
+            { label: 'EST. LENGTH', value: '12s' },
+            { label: 'RESOLUTION', value: '1080p' },
+          ].map((item) => (
+            <div key={item.label} style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{item.label}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 700, color: 'var(--text-accent)', marginTop: '1px' }}>{item.value}</div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">총 영상 길이</p>
-              <p className="text-xs text-gray-600">약 12초</p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRegenerateAll}
-            disabled={isRegenerating}
-            className="text-purple-600 hover:text-purple-700 hover:bg-purple-100"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
-            {isRegenerating ? '재생성 중...' : '재생성'}
-          </Button>
+          ))}
         </div>
+        <div className="status-badge status-badge-active">READY TO RENDER</div>
       </div>
 
-      {/* 하단 버튼 */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Button 
-          variant="outline" 
-          className="flex-1 h-12 text-base font-semibold
-                   border-2 border-gray-300 hover:border-purple-400
-                   hover:bg-purple-50 transition-all duration-300"
+      {/* Bottom Actions */}
+      <div className="fade-up fade-up-4" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button
           onClick={onEdit}
+          style={{
+            flex: 1, minWidth: '120px', height: '48px',
+            background: 'transparent', border: '1px solid var(--glass-border)',
+            borderRadius: 'var(--radius)', color: 'var(--text-secondary)',
+            fontSize: '0.85rem', fontFamily: 'var(--font-display)', fontWeight: 600,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            transition: 'border-color 0.2s, color 0.2s',
+          }}
         >
-          <Edit3 className="w-5 h-5 mr-2" />
+          <Edit3 size={15} />
           처음으로
-        </Button>
-        <Button 
-          className="flex-1 h-12 text-base font-semibold
-                   bg-gradient-to-r from-purple-600 to-blue-600 
-                   hover:from-purple-700 hover:to-blue-700
-                   shadow-lg hover:shadow-xl
-                   transition-all duration-300"
+        </button>
+        <button
+          className="btn-cinema-primary"
           onClick={onNext}
+          style={{
+            flex: 2, minWidth: '180px', height: '48px',
+            fontSize: '0.9rem', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '0.04em',
+          }}
         >
-          <Play className="w-5 h-5 mr-2" />
+          <Play size={16} />
           영상 생성하기
-        </Button>
+        </button>
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }

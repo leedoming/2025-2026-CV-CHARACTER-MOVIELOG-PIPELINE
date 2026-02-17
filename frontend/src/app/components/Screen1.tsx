@@ -1,9 +1,8 @@
 // src/app/components/Screen1.tsx
 
-import { Upload, Sparkles, X } from "lucide-react";
+import { Upload, Sparkles, X, ChevronRight } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import { Textarea } from "@/app/components/ui/textarea";
 import { Label } from "@/app/components/ui/label";
 import { useAppContext } from "@/context/AppContext";
 import { StorageService } from "@/services/storage.service";
@@ -22,37 +21,25 @@ export function Screen1({ onNext }: Screen1Props) {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/')) {
       setErrors({ ...errors, image: '이미지 파일만 업로드 가능합니다.' });
       return;
     }
-
     if (file.size > 10 * 1024 * 1024) {
       setErrors({ ...errors, image: '파일 크기는 10MB 이하여야 합니다.' });
       return;
     }
-
     try {
       const imageUrl = await StorageService.uploadImage(file);
-      setCharacterData({
-        ...characterData,
-        image: file,
-        imageUrl,
-      });
+      setCharacterData({ ...characterData, image: file, imageUrl });
       setErrors({ ...errors, image: '' });
     } catch (error) {
-      console.error('Image upload error:', error);
       setErrors({ ...errors, image: '이미지 업로드에 실패했습니다.' });
     }
   };
 
   const handleRemoveImage = () => {
-    setCharacterData({
-      ...characterData,
-      image: null,
-      imageUrl: '',
-    });
+    setCharacterData({ ...characterData, image: null, imageUrl: '' });
   };
 
   const validateForm = (): boolean => {
@@ -72,217 +59,259 @@ export function Screen1({ onNext }: Screen1Props) {
     setIsLoading(true);
     try {
       const generatedScenes = await AIService.generateScenario(
-        characterData.name,
-        characterData.who,
-        characterData.where,
-        characterData.what,
-        characterData.how,
-        characterData.imageUrl
+        characterData.name, characterData.who, characterData.where,
+        characterData.what, characterData.how, characterData.imageUrl
       );
       setScenes(generatedScenes);
       onNext();
     } catch (error) {
-      console.error('Scenario generation error:', error);
       setErrors({ ...errors, general: '시나리오 생성에 실패했습니다.' });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fields = [
+    { key: 'who', label: '누가', placeholder: '예: 눈송이가', hint: 'WHO' },
+    { key: 'where', label: '어디서', placeholder: '예: 카페에서', hint: 'WHERE' },
+    { key: 'what', label: '무엇을', placeholder: '예: 커피를 마시며', hint: 'WHAT' },
+    { key: 'how', label: '어떻게', placeholder: '예: 노트북을 한다', hint: 'HOW' },
+  ] as const;
+
   return (
-    <div className="w-full max-w-2xl mx-auto p-4 md:p-6">
-      {/* Header with gradient */}
-      <div className="text-center mb-8 space-y-2">
-        <div className="inline-flex items-center justify-center p-3 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl mb-4">
-          <Sparkles className="w-8 h-8 text-white" />
-        </div>
-        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-          AI 영상 생성
+    <div className="w-full max-w-2xl mx-auto px-4 py-6 relative z-10">
+
+      {/* Header */}
+      <div className="mb-8 fade-up fade-up-1">
+        <div className="eyebrow mb-3">AI Video Generation</div>
+        <h1 className="text-display" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
+          캐릭터를 설정하고<br />
+          <span className="gradient-brand-text">시나리오를 생성</span>하세요
         </h1>
-        <p className="text-gray-600 text-sm md:text-base">
-          캐릭터와 시나리오를 입력하고 AI가 영상을 만들어드립니다
+        <p style={{ marginTop: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.9rem', fontFamily: 'var(--font-body)' }}>
+          AI가 3개의 장면으로 자동 구성합니다
         </p>
       </div>
 
       {/* Main Card */}
-      <div className="relative bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-purple-500"></div>
-        
-        <div className="p-6 md:p-8 space-y-6">
-          {/* 캐릭터 이미지 업로드 */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold text-gray-800">
-              캐릭터 이미지
-            </Label>
-            <div className="relative group aspect-square border-2 border-dashed rounded-xl 
-                          hover:border-purple-400 transition-all duration-300 cursor-pointer
-                          bg-gradient-to-br from-gray-50 to-gray-100 hover:from-purple-50 hover:to-blue-50"
-                 style={characterData.imageUrl ? {
-                   backgroundImage: `url(${characterData.imageUrl})`,
-                   backgroundSize: 'cover',
-                   backgroundPosition: 'center'
-                 } : {}}>
-              <input 
-                type="file" 
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+      <div className="cinema-card fade-up fade-up-2" style={{ overflow: 'visible' }}>
+        <div style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+          {/* Image Upload */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                CHARACTER IMAGE
+              </label>
+              {characterData.imageUrl && (
+                <span className="status-badge status-badge-complete">LOADED</span>
+              )}
+            </div>
+
+            <div
+              className="gradient-border"
+              style={{
+                position: 'relative',
+                aspectRatio: '1/1',
+                maxHeight: '220px',
+                borderRadius: 'calc(var(--radius) * 1.2)',
+                overflow: 'hidden',
+                cursor: 'pointer',
+                background: characterData.imageUrl
+                  ? `url(${characterData.imageUrl}) center/cover no-repeat`
+                  : 'var(--bg-surface)',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              <input
+                type="file"
+                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', zIndex: 10 }}
                 accept="image/*"
                 onChange={handleImageUpload}
               />
+
               {characterData.imageUrl ? (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleRemoveImage();
-                  }}
-                  className="absolute top-3 right-3 z-20 p-2 bg-red-500 text-white rounded-full
-                           hover:bg-red-600 transition-colors shadow-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <>
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)', zIndex: 5 }} />
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRemoveImage(); }}
+                    style={{
+                      position: 'absolute', top: '12px', right: '12px', zIndex: 20,
+                      width: '32px', height: '32px', borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.15)',
+                      color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.2s ease',
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </>
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                  <div className="p-4 bg-white rounded-full shadow-lg group-hover:shadow-xl 
-                                group-hover:scale-110 transition-all duration-300">
-                    <Upload className="w-8 h-8 md:w-10 md:h-10 text-gray-400 group-hover:text-purple-500 transition-colors" />
+                <div style={{
+                  position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: '12px',
+                  color: 'var(--text-muted)',
+                }}>
+                  <div style={{
+                    width: '48px', height: '48px', borderRadius: '50%',
+                    border: '1px solid var(--glass-border)',
+                    background: 'var(--bg-elevated)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Upload size={20} style={{ color: 'var(--accent-purple)' }} />
                   </div>
-                  <div className="text-center px-4">
-                    <p className="text-sm md:text-base font-medium text-gray-600 group-hover:text-purple-600 transition-colors">
-                      이미지를 드래그하거나 클릭하세요
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      PNG, JPG (최대 10MB)
-                    </p>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>드래그하거나 클릭하여 업로드</p>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>PNG · JPG · MAX 10MB</p>
                   </div>
                 </div>
               )}
             </div>
-            {errors.image && (
-              <p className="text-sm text-red-500">{errors.image}</p>
-            )}
+            {errors.image && <p style={{ marginTop: '6px', fontSize: '0.75rem', color: '#f87171' }}>{errors.image}</p>}
           </div>
 
-          {/* 캐릭터 이름 */}
-          <div className="space-y-3">
-            <Label htmlFor="character-name" className="text-base font-semibold text-gray-800">
-              캐릭터 이름
-            </Label>
-            <Input 
-              id="character-name"
-              type="text" 
-              placeholder="예: 눈송이"
-              value={characterData.name}
-              onChange={(e) => setCharacterData({ ...characterData, name: e.target.value })}
-              className="h-12 text-base border-gray-200 focus:border-purple-400 
-                       focus:ring-purple-400/20 transition-all"
-            />
-            {errors.name && (
-              <p className="text-sm text-red-500">{errors.name}</p>
-            )}
+          {/* Divider */}
+          <div className="divider-glow" />
+
+          {/* Character Name */}
+          <div>
+            <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>
+              CHARACTER NAME
+            </label>
+            <div style={{ position: 'relative' }}>
+              <Input
+                type="text"
+                placeholder="예: 눈송이"
+                value={characterData.name}
+                onChange={(e) => setCharacterData({ ...characterData, name: e.target.value })}
+                style={{
+                  height: '44px',
+                  paddingLeft: '14px',
+                  fontSize: '0.95rem',
+                  background: 'var(--bg-surface)',
+                  border: errors.name ? '1px solid rgba(239,68,68,0.5)' : '1px solid var(--glass-border)',
+                  borderRadius: 'calc(var(--radius) - 2px)',
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            {errors.name && <p style={{ marginTop: '6px', fontSize: '0.75rem', color: '#f87171' }}>{errors.name}</p>}
           </div>
 
-          {/* 영상 설명 */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold text-gray-800">
-              영상 설명
-            </Label>
-            
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="who" className="text-sm text-gray-600">누가</Label>
-                <Input 
-                  id="who"
-                  placeholder="예: 눈송이가"
-                  value={characterData.who}
-                  onChange={(e) => setCharacterData({ ...characterData, who: e.target.value })}
-                  className="mt-1 border-gray-200 focus:border-purple-400"
-                />
-                {errors.who && <p className="text-sm text-red-500 mt-1">{errors.who}</p>}
-              </div>
-              
-              <div>
-                <Label htmlFor="where" className="text-sm text-gray-600">어디서</Label>
-                <Input 
-                  id="where"
-                  placeholder="예: 카페에서"
-                  value={characterData.where}
-                  onChange={(e) => setCharacterData({ ...characterData, where: e.target.value })}
-                  className="mt-1 border-gray-200 focus:border-purple-400"
-                />
-                {errors.where && <p className="text-sm text-red-500 mt-1">{errors.where}</p>}
-              </div>
-              
-              <div>
-                <Label htmlFor="what" className="text-sm text-gray-600">무엇을</Label>
-                <Input 
-                  id="what"
-                  placeholder="예: 커피를 마시며"
-                  value={characterData.what}
-                  onChange={(e) => setCharacterData({ ...characterData, what: e.target.value })}
-                  className="mt-1 border-gray-200 focus:border-purple-400"
-                />
-                {errors.what && <p className="text-sm text-red-500 mt-1">{errors.what}</p>}
-              </div>
-              
-              <div>
-                <Label htmlFor="how" className="text-sm text-gray-600">어떻게</Label>
-                <Input 
-                  id="how"
-                  placeholder="예: 노트북을 한다"
-                  value={characterData.how}
-                  onChange={(e) => setCharacterData({ ...characterData, how: e.target.value })}
-                  className="mt-1 border-gray-200 focus:border-purple-400"
-                />
-                {errors.how && <p className="text-sm text-red-500 mt-1">{errors.how}</p>}
-              </div>
+          {/* Scenario Inputs */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.875rem' }}>
+              <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                SCENARIO SETUP
+              </label>
+              <div style={{ flex: 1, height: '1px', background: 'var(--glass-border)' }} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              {fields.map((field) => (
+                <div key={field.key}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--accent-purple)', fontWeight: 700, letterSpacing: '0.1em' }}>{field.hint}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{field.label}</span>
+                  </div>
+                  <Input
+                    placeholder={field.placeholder}
+                    value={characterData[field.key]}
+                    onChange={(e) => setCharacterData({ ...characterData, [field.key]: e.target.value })}
+                    style={{
+                      height: '40px',
+                      fontSize: '0.85rem',
+                      background: 'var(--bg-surface)',
+                      border: errors[field.key] ? '1px solid rgba(239,68,68,0.5)' : '1px solid var(--glass-border)',
+                      borderRadius: 'calc(var(--radius) - 2px)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                  {errors[field.key] && <p style={{ marginTop: '4px', fontSize: '0.7rem', color: '#f87171' }}>{errors[field.key]}</p>}
+                </div>
+              ))}
             </div>
           </div>
 
+          {/* Error */}
           {errors.general && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{errors.general}</p>
+            <div style={{
+              padding: '12px 14px', borderRadius: 'var(--radius)',
+              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+              fontSize: '0.8rem', color: '#f87171',
+            }}>
+              {errors.general}
             </div>
           )}
 
-          {/* 시나리오 생성 버튼 */}
-          <Button 
-            className="w-full h-14 text-base font-semibold
-                     bg-gradient-to-r from-purple-600 to-blue-600 
-                     hover:from-purple-700 hover:to-blue-700
-                     shadow-lg hover:shadow-xl
-                     transition-all duration-300
-                     group relative overflow-hidden
-                     disabled:opacity-50 disabled:cursor-not-allowed"
+          {/* CTA Button */}
+          <button
+            className="btn-cinema-primary"
             onClick={handleGenerateScenario}
             disabled={isLoading}
+            style={{
+              width: '100%',
+              height: '52px',
+              fontSize: '0.95rem',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: isLoading ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+            }}
           >
-            <span className="relative z-10 flex items-center gap-2">
-              <Sparkles className="w-5 h-5" />
-              {isLoading ? '시나리오 생성 중...' : '시나리오 생성하기'}
-            </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 
-                          opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          </Button>
+            {isLoading ? (
+              <>
+                <span style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+                시나리오 생성 중...
+              </>
+            ) : (
+              <>
+                <Sparkles size={16} />
+                시나리오 생성하기
+                <ChevronRight size={16} style={{ marginLeft: '2px' }} />
+              </>
+            )}
+          </button>
+
         </div>
       </div>
 
       {/* Info Footer */}
-      <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-        <div className="flex gap-3">
-          <div className="flex-shrink-0">
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-bold">i</span>
-            </div>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm text-blue-900 font-medium">
-              AI가 자동으로 3개의 장면으로 시나리오를 구성합니다
-            </p>
-            <p className="text-xs text-blue-700 mt-1">
-              생성 후 각 장면을 수정하거나 재생성할 수 있습니다
-            </p>
-          </div>
+      <div className="fade-up fade-up-3" style={{
+        marginTop: '1rem',
+        padding: '14px 16px',
+        borderRadius: 'var(--radius)',
+        background: 'rgba(124, 58, 237, 0.05)',
+        border: '1px solid rgba(124, 58, 237, 0.12)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+      }}>
+        <div style={{
+          width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+          background: 'rgba(124, 58, 237, 0.2)', border: '1px solid rgba(124, 58, 237, 0.3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 700,
+        }}>i</div>
+        <div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            AI가 자동으로 <span style={{ color: 'var(--text-accent)' }}>3개의 장면</span>으로 시나리오를 구성합니다
+          </p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+            생성 후 각 장면을 수정하거나 재생성할 수 있습니다
+          </p>
         </div>
       </div>
+
+      {/* CSS for spin animation */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
